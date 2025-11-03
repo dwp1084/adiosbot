@@ -4,3 +4,4 @@ venv*
 .DS_Store
 whitelist.json
 .direnv
+.idea/
