@@ -1,13 +1,12 @@
-#!/usr/bin/env python3
 import discord
 from discord.ext import commands, tasks
 import os
-import syslog
+import logging
 import json
 import random
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 import pytz
-from time import sleep
+from dotenv import load_dotenv
 
 utc=pytz.UTC
 
@@ -19,19 +18,31 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+logging.basicConfig(
+    level=logging.INFO,
+    filename="bot.log",
+    filemode="a",
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
+# logger.setLevel(logging.INFO)
+
+load_dotenv()
+
 # Folder to store message logs
 
-if 'DISCORD_BOT_TOKEN' not in os.environ:
-    syslog.syslog(syslog.LOG_ERR, "Error: DISCORD_BOT_TOKEN is not set")
-    exit(1)
-else:
-    bot_token = os.environ.get('DISCORD_BOT_TOKEN')
+api_token = os.getenv('DISCORD_BOT_TOKEN')
 
-if 'WORKING_DIR' not in os.environ:
-    syslog.syslog(syslog.LOG_ERR, "Error: WORKING_DIR is not set")
+if api_token is None:
+    logger.error("Error: DISCORD_BOT_TOKEN is not set")
     exit(1)
-else:
-    working_dir = os.environ.get('WORKING_DIR')
+
+working_dir = os.getenv('WORKING_DIR')
+
+if working_dir is None or not os.path.exists(working_dir):
+    logger.warning("WORKING_DIR not set or invalid, defaulting to script directory.")
+    working_dir = os.getcwd()
 
 if not os.path.exists(working_dir):
     os.makedirs(working_dir)
@@ -57,12 +68,17 @@ async def fetch_new_messages(channel):
     # Find the timestamp of the last saved message
     last_saved_time = None
     if existing_messages:
-        last_saved_time = max(datetime.fromisoformat(msg['timestamp']) for msg in existing_messages)
+        last_saved_time = max(
+            datetime.fromisoformat(msg['timestamp']) for msg in existing_messages
+        )
 
     # Fetch only messages newer than the last saved one
     new_messages = []
     async for message in channel.history(limit=10000, after=last_saved_time):
-        new_messages.append({'timestamp': message.created_at.isoformat(), 'author': message.author.id})
+        new_messages.append({
+            'timestamp': message.created_at.isoformat(),
+            'author': message.author.id
+        })
 
     newest_messages_by_author = {}
 
@@ -72,21 +88,32 @@ async def fetch_new_messages(channel):
         msg_timestamp = datetime.fromisoformat(msg['timestamp'])
 
         # Keep only the latest message for each author
-        if (author_id not in newest_messages_by_author) or (msg_timestamp > datetime.fromisoformat(newest_messages_by_author[author_id]['timestamp'])):
+        if ((author_id not in newest_messages_by_author)
+                or (msg_timestamp > datetime.fromisoformat(
+                    newest_messages_by_author[author_id]['timestamp']
+                ))):
             newest_messages_by_author[author_id] = msg
 
     # Convert dictionary values back to a list of messages
     all_messages = list(newest_messages_by_author.values())
 
     # Sort the messages by timestamp in reverse (newest first)
-    sorted_new_messages = sorted(all_messages, key=lambda x: datetime.fromisoformat(x["timestamp"]), reverse=True)
+    sorted_new_messages = sorted(
+        all_messages,
+        key=lambda x: datetime.fromisoformat(x["timestamp"]),
+        reverse=True
+    )
 
     # Save the updated list back to disk
-    with open(f"{MESSAGE_LOG_DIR}/{channel.id}.json", 'w', encoding='utf-8') as f:
+    with open(
+            f"{MESSAGE_LOG_DIR}/{channel.id}.json",
+            'w',
+            encoding='utf-8'
+    ) as f:
         json.dump(sorted_new_messages, f, ensure_ascii=False, indent=4)
 
     if new_messages:
-        syslog.syslog(syslog.LOG_INFO, f"Fetched {len(new_messages)} new messages from {channel.name}")
+        logger.info(f"Fetched {len(new_messages)} new messages from {channel.name}")
 
 
 # Fetch and save messages from all channels
@@ -239,7 +266,7 @@ async def kick_inactive(ctx, n: int):
                         await member.kick(reason=f"Inactive in {guild.name} for {n} days")
                         await ctx.send(f"**Kicked {member.name} for inactivity**")
                     except:
-                        syslog.syslog(syslog.LOG_ERR, 'Error kicking {member.name}')
+                        logger.error(f'Error kicking {member.name}')
                 else:
                     inactive_whitelisted_members.append(member.name)
 
@@ -255,6 +282,9 @@ async def kick_inactive(ctx, n: int):
 
 @bot.event
 async def on_message(message):
+    if message.author.bot:
+        return
+
     await bot.process_commands(message)
     for guild in bot.guilds:
         await fetch_messages(guild)
@@ -266,16 +296,19 @@ with open(f'{working_dir}/goodbye_songs.json', 'r', encoding='utf-8') as f:
 @tasks.loop(seconds=120)
 async def change_song():
     random_song = random.choice(goodbye_songs)
-    activity = discord.Activity(type=discord.ActivityType.listening, name=f"{random_song['title']} by {random_song['artist']}")
+    activity = discord.Activity(
+        type=discord.ActivityType.listening,
+        name=f"{random_song['title']} by {random_song['artist']}"
+    )
     await bot.change_presence(activity=activity)
 
 @bot.event
 async def on_ready():
-    syslog.syslog(syslog.LOG_INFO, f'Logged in as {bot.user.name}')
+    logger.info(f'Logged in as {bot.user.name}')
     for guild in bot.guilds:
         await fetch_messages(guild)
-    syslog.syslog(syslog.LOG_INFO, f"Ready for your commands!")
+    logger.info("Ready for your commands!")
     change_song.start()
 
 # Run the bot
-bot.run(bot_token)
+bot.run(api_token)

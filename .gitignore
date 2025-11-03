@@ -5,3 +5,5 @@ venv*
 whitelist.json
 .direnv
 .idea/
+.env
+*.log
