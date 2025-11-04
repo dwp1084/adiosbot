@@ -5,10 +5,10 @@ import discord
 from discord import app_commands, Interaction
 from discord.ext import commands
 
-from utils.functions import get_whitelist
-from utils.globals import WHITELIST_PATH
+from utils.functions import get_whitelist, set_whitelist
+from utils.globals import WHITELIST_DIR
 
-wl_path = WHITELIST_PATH
+wl_dir = WHITELIST_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class WhiteList(commands.GroupCog, name="whitelist"):
     async def show(self, interaction: Interaction):
         logger.debug("Command received - /whitelist show")
         guild = interaction.guild
-        whitelist = get_whitelist()
+        whitelist = get_whitelist(guild)
         if len(whitelist) > 0:
             whitelist_str = await get_whitelist_str(whitelist, guild)
 
@@ -51,7 +51,7 @@ class WhiteList(commands.GroupCog, name="whitelist"):
         name = user.name
         logger.debug(f"Command received - /whitelist add {name}")
         guild = interaction.guild
-        existing_members = get_whitelist()
+        existing_members = get_whitelist(guild)
         if user not in guild.members:
             await interaction.response.send_message(f"**User {name} does not exist or is not a member of this server**",
                                                     ephemeral=True)
@@ -61,13 +61,7 @@ class WhiteList(commands.GroupCog, name="whitelist"):
             return
         new_members = existing_members + [user.id]
 
-        global wl_path
-        if wl_path is None:
-            from utils.globals import WHITELIST_PATH
-            wl_path = WHITELIST_PATH
-
-        with open(wl_path, 'w', encoding='utf-8') as f:
-            json.dump(new_members, f, ensure_ascii=False, indent=4)
+        set_whitelist(guild, new_members)
 
         whitelist_str = await get_whitelist_str(new_members, guild)
 
@@ -83,7 +77,7 @@ class WhiteList(commands.GroupCog, name="whitelist"):
         name = user.name
         logger.debug(f"Command received - /whitelist remove {name}")
         guild = interaction.guild
-        existing_members = get_whitelist()
+        existing_members = get_whitelist(guild)
         if user not in guild.members:
             await interaction.response.send_message(f"**User {name} does not exist or is not a member of this server**",
                                                     ephemeral=True)
@@ -93,13 +87,7 @@ class WhiteList(commands.GroupCog, name="whitelist"):
             return
         existing_members.remove(user.id)
 
-        global wl_path
-        if wl_path is None:
-            from utils.globals import WHITELIST_PATH
-            wl_path = WHITELIST_PATH
-
-        with open(wl_path, 'w', encoding='utf-8') as f:
-            json.dump(existing_members, f, ensure_ascii=False, indent=4)
+        set_whitelist(guild, existing_members)
 
         whitelist_str = await get_whitelist_str(existing_members, guild)
 

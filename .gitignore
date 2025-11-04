@@ -1,5 +1,6 @@
 __pycache__
 message_logs
+whitelists
 venv*
 .DS_Store
 whitelist.json

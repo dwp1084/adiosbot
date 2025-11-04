@@ -8,12 +8,12 @@ from dotenv import load_dotenv
 # Make these names available elsewhere
 working_dir: str | None = None
 MESSAGE_LOG_DIR: str | None = None
-WHITELIST_PATH: str | None = None
+WHITELIST_DIR: str | None = None
 utc = pytz.UTC
 
 
 def setup() -> str:
-    global working_dir, MESSAGE_LOG_DIR, WHITELIST_PATH
+    global working_dir, MESSAGE_LOG_DIR, WHITELIST_DIR
 
     logger = logging.getLogger(__name__)
 
@@ -36,13 +36,15 @@ def setup() -> str:
     if not os.path.exists(working_dir):
         os.makedirs(working_dir)
 
-    MESSAGE_LOG_DIR = working_dir + "/message_logs"
+    MESSAGE_LOG_DIR = os.path.join(working_dir, "message_logs")
     if not os.path.exists(MESSAGE_LOG_DIR):
         os.makedirs(MESSAGE_LOG_DIR)
-    WHITELIST_PATH = working_dir + "/whitelist.json"
+    WHITELIST_DIR = os.path.join(working_dir, "whitelists")
+    if not os.path.exists(WHITELIST_DIR):
+        os.makedirs(WHITELIST_DIR)
 
     logger.info(MESSAGE_LOG_DIR)
-    logger.info(WHITELIST_PATH)
+    logger.info(WHITELIST_DIR)
     logger.info(working_dir)
 
     return api_token

@@ -27,7 +27,7 @@ class Moderation(commands.Cog):
         inactive_whitelisted_members = []
         cutoff_date = datetime.now() - timedelta(days=n)
 
-        whitelist = get_whitelist()
+        whitelist = get_whitelist(guild)
 
         for member in guild.members:
             if not member.bot:

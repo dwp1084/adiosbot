@@ -4,11 +4,13 @@ import logging
 import os
 from datetime import datetime
 
-from utils.globals import MESSAGE_LOG_DIR, WHITELIST_PATH
+import discord
+
+from utils.globals import MESSAGE_LOG_DIR, WHITELIST_DIR
 
 logger = logging.getLogger(__name__)
 log_dir = MESSAGE_LOG_DIR
-wl_path = WHITELIST_PATH
+wl_dir = WHITELIST_DIR
 
 def load_existing_messages(channel_id):
     global log_dir
@@ -120,14 +122,27 @@ def remove_member_messages(member, guild):
             json.dump(messages, f, ensure_ascii=False, indent=4)
     return
 
-def get_whitelist():
-    global wl_path
-    if wl_path is None:
-        from utils.globals import WHITELIST_PATH
-        wl_path = WHITELIST_PATH
+def get_whitelist(guild: discord.Guild):
+    global wl_dir
+    if wl_dir is None:
+        from utils.globals import WHITELIST_DIR
+        wl_dir = WHITELIST_DIR
 
-    if os.path.exists(wl_path):
-        with open(wl_path, 'r', encoding='utf-8') as f:
+    guild_wl_path = os.path.join(wl_dir, f"{guild.id}.json")
+
+    if os.path.exists(guild_wl_path):
+        with open(guild_wl_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     else:
         return []
+
+def set_whitelist(guild: discord.Guild, whitelist):
+    global wl_dir
+    if wl_dir is None:
+        from utils.globals import WHITELIST_DIR
+        wl_dir = WHITELIST_DIR
+
+    guild_wl_path = os.path.join(wl_dir, f"{guild.id}.json")
+
+    with open(guild_wl_path, 'w', encoding='utf-8') as f:
+        json.dump(whitelist, f, ensure_ascii=False, indent=4)
