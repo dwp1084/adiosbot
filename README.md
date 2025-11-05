@@ -1,3 +1,10 @@
+This is a fork of the AdiosBot project I made for a friend. Primarily, this fork
+updates the commands for the bot to use slash commands, fixes some bugs, and
+uses a development environment that should work on any platform. Below is the
+original README:
+
+---
+
 # AdiosBot
 
 Adios, inactive members.
