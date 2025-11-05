@@ -1,11 +1,9 @@
 import asyncio
 import logging
-from datetime import timedelta
 
 import discord
 from discord.ext import commands
 
-from cogs.activity import Activity
 from utils.functions import fetch_messages
 from utils.globals import setup
 
@@ -18,7 +16,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         filename="bot.log",
         filemode="a",
         format='%(asctime)s - %(levelname)s - %(message)s'
@@ -52,7 +50,6 @@ async def load_cogs():
 
 
 async def main():
-    # api_token = setup()
     async with bot:
         await load_cogs()
         await bot.start(api_token)

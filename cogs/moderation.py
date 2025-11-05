@@ -1,12 +1,11 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands, Interaction
 from discord.ext import commands
 
 from utils.functions import get_last_message_time, get_whitelist, remove_member_messages
-from utils.globals import utc
 
 logger = logging.getLogger(__name__)
 
@@ -25,20 +24,23 @@ class Moderation(commands.Cog):
         user_last_message = get_last_message_time(guild)
         inactive_members = []
         inactive_whitelisted_members = []
-        cutoff_date = datetime.now() - timedelta(days=n)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=n)
 
         whitelist = get_whitelist(guild)
 
         for member in guild.members:
             if not member.bot:
                 last_message_time = user_last_message.get(member.id)
-                if last_message_time is None or last_message_time < utc.localize(cutoff_date):
-                    if member.name not in whitelist:
+
+                logger.debug(f"{member.name} lm {last_message_time} co {cutoff_date}")
+
+                if last_message_time is None or last_message_time < cutoff_date:
+                    if member.id not in whitelist:
                         inactive_members.append(member.name)
                         remove_member_messages(member, guild)
                         try:
                             await member.kick(reason=f"Inactive in {guild.name} for {n} days")
-                            await interaction.followup.send(f"**Kicked {member.name} for inactivity**")
+                            logger.info(f"Kicked {member.name} in {guild.name} for inactivity.")
                         except:
                             logger.error(f'Error kicking {member.name}')
                     else:
@@ -46,14 +48,19 @@ class Moderation(commands.Cog):
 
         inactive_members.sort()
         inactive_whitelisted_members.sort()
+
+        response_str = ""
+
         if inactive_members:
-            await interaction.followup.send(f"**Kicked {str(len(inactive_members))} members which were inactive in the last {n} days**\n" + "\n".join(
-                    inactive_members))
+            response_str += f"**Kicked {str(len(inactive_members))} members which were inactive in the last {n} days**\n" + "\n".join(
+                    inactive_members)
         else:
-            await interaction.followup.send(f"No inactive members found in the last {n} days.")
+            response_str += f"No inactive members found in the last {n} days."
+
         if inactive_whitelisted_members:
-            await interaction.followup.send(f"**Did not kick {str(len(inactive_whitelisted_members))} whitelisted inactive members:**\n" + "\n".join(
-                    inactive_whitelisted_members))
+            response_str += f"\n\n({str(len(inactive_whitelisted_members))} whitelisted members spared)"
+
+        await interaction.followup.send(response_str)
 
     @app_commands.command(name="ban", description='"Bans" a user :3')
     @app_commands.describe(user="The user to ban")

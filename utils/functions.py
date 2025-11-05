@@ -81,7 +81,7 @@ async def fetch_new_messages(channel):
         json.dump(sorted_new_messages, f, ensure_ascii=False, indent=4)
 
     if new_messages:
-        logger.info(f"Fetched {len(new_messages)} new messages from {channel.name}")
+        logger.debug(f"Fetched {len(new_messages)} new messages from {channel.name}")
 
 
 # Fetch and save messages from all channels

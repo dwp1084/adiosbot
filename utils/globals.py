@@ -1,15 +1,12 @@
 import logging
 import os
-from logging import Logger
 
-import pytz
 from dotenv import load_dotenv
 
 # Make these names available elsewhere
 working_dir: str | None = None
 MESSAGE_LOG_DIR: str | None = None
 WHITELIST_DIR: str | None = None
-utc = pytz.UTC
 
 
 def setup() -> str:

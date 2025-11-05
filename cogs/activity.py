@@ -1,15 +1,14 @@
 import json
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands, Interaction
 from discord.ext import commands, tasks
 
 from utils.functions import get_last_message_time, get_whitelist
-from utils.globals import working_dir, utc
-
+from utils.globals import working_dir
 
 logger = logging.getLogger(__name__)
 
@@ -30,29 +29,37 @@ class Activity(commands.Cog):
         user_last_message = get_last_message_time(guild)
         inactive_members = []
         inactive_whitelisted_members = []
-        cutoff_date = datetime.now() - timedelta(days=n)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=n)
 
-        whitelist = get_whitelist()
+        whitelist = get_whitelist(guild)
 
         for member in guild.members:
             if not member.bot:
                 last_message_time = user_last_message.get(member.id)
-                if last_message_time is None or last_message_time < utc.localize(cutoff_date):
-                    if member.name not in whitelist:
+
+                logger.debug(f"{member.name} lm {last_message_time} co {cutoff_date}")
+
+                if last_message_time is None or last_message_time < cutoff_date:
+                    if member.id not in whitelist:
                         inactive_members.append(member.name)
                     else:
                         inactive_whitelisted_members.append(member.name)
 
         inactive_members.sort()
         inactive_whitelisted_members.sort()
+
+        response_str = ""
+
         if inactive_members:
-            await interaction.response.send_message(f"**{str(len(inactive_members))} inactive members in the last {n} days:**\n" + "\n".join(
-                inactive_members), ephemeral=True)
+            response_str += f"**{str(len(inactive_members))} inactive members in the last {n} days:**\n" + "\n".join(
+                inactive_members)
         else:
-            await interaction.response.send_message(f"No inactive members found in the last {n} days.", ephemeral=True)
+            response_str += f"No inactive members found in the last {n} days."
+
         if inactive_whitelisted_members:
-            await interaction.response.send_message(f"**{str(len(inactive_whitelisted_members))} whitelisted inactive members:**\n" + "\n".join(
-                inactive_whitelisted_members), ephemeral=True)
+            response_str += f"\n\n(Not including {str(len(inactive_whitelisted_members))} whitelisted members who are inactive)"
+
+        await interaction.response.send_message(response_str, ephemeral=True)
 
     @tasks.loop(seconds=120)
     async def change_song(self):
