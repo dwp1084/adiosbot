@@ -7,6 +7,7 @@ from discord.ext import commands
 from utils.database import db_exec, add_timestamp
 from utils.functions import fetch_messages
 from utils.globals import setup
+from utils.syncmanager import sync_manager
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -15,14 +16,6 @@ intents.members = True
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-
-# logging.basicConfig(
-#         level=logging.INFO,
-#         filename="bot.log",
-#         filemode="a",
-#         format='%(asctime)s - %(levelname)s - %(message)s'
-#     )
-# logger = logging.getLogger(__name__)
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -64,11 +57,30 @@ async def on_message(message):
     )
 
 @bot.event
+async def on_guild_join(guild):
+    logger.info("Joined new guild - starting sync")
+    async with sync_manager.lock:
+        sync_manager.add_guilds((guild,))
+        await fetch_messages(guild)
+        sync_manager.finish_syncing()
+
+@bot.event
+async def on_guild_remove(guild):
+    logger.info(f"Left guild {guild.name}")
+    async with sync_manager.lock:
+        sync_manager.remove_guild(guild.id)
+
+@bot.event
 async def on_ready():
     logger.info(f'Logged in as {bot.user.name}')
     await bot.tree.sync()
-    for guild in bot.guilds:
-        await fetch_messages(guild)
+    logger.info("Starting message sync")
+    async with sync_manager.lock:
+        sync_manager.add_guilds(bot.guilds)
+        for guild in bot.guilds:
+            await fetch_messages(guild)
+            await asyncio.sleep(0.25)
+        sync_manager.finish_syncing()
     logger.info("Ready for your commands!")
 
 

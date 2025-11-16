@@ -130,4 +130,6 @@ def get_last_stored_timestamp(cursor: sqlite3.Cursor, guild_id):
     """
 
     cursor.execute(get_last_stored_timestamp_sql, (guild_id,))
-    return cursor.fetchone()[0], False
+    results = cursor.fetchone()
+    results = results[0] if results is not None else None
+    return results, False

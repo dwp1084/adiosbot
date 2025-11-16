@@ -1,13 +1,15 @@
 # Load existing messages from disk
+import asyncio
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 import discord
 
-from utils.database import db_exec, get_last_stored_timestamp
+from utils.database import db_exec, get_last_stored_timestamp, add_timestamp
 from utils.globals import MESSAGE_LOG_DIR, WHITELIST_DIR
+from utils.syncmanager import sync_manager
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -126,8 +128,28 @@ wl_dir = WHITELIST_DIR
 #             json.dump(messages, f, ensure_ascii=False, indent=4)
 #     return
 
-# async def fetch_new_messages(channel):
-#
+# Fetch and save messages from a specific channel, only fetching new ones
+async def fetch_new_messages(channel, earliest):
+    logger.debug(f"Fetching messages from {channel.name}")
+    current_utc_time = datetime.now(timezone.utc)
+    limit = current_utc_time - timedelta(days=60)
+
+    # Go back a maximum of 60 days in history per channel
+    if earliest is not None and earliest > limit:
+        limit = earliest
+
+    async for msg in channel.history(limit=None, oldest_first=True, after=limit):
+        if msg.author.bot:
+            continue
+
+        await db_exec(
+            add_timestamp,
+            msg.guild.id,
+            msg.author.id,
+            msg.author.name,
+            msg.created_at
+        )
+
 
 # Fetch and save messages from all channels
 async def fetch_messages(guild):
@@ -135,13 +157,15 @@ async def fetch_messages(guild):
         get_last_stored_timestamp,
         guild.id
     )
-    timestamp = datetime.fromisoformat(timestamp_str)
-    logger.debug(f"Last message timestamp in guild: {timestamp}")
-    logger.debug(f"type {type(timestamp)}")
+    timestamp = datetime.fromisoformat(timestamp_str) \
+        if timestamp_str is not None else None
+    logger.debug(f"Last message timestamp in {guild.name}: {timestamp}")
     for channel in guild.text_channels:
         if channel.permissions_for(guild.me).read_message_history:
-            pass
-            # await fetch_new_messages(channel)
+            await fetch_new_messages(channel, timestamp)
+
+    logger.info(f"Sync for {guild.name} complete!")
+    sync_manager.set_ready(guild.id)
 
 
 def get_whitelist(guild: discord.Guild):
