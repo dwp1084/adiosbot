@@ -7,6 +7,7 @@ import discord
 from discord import app_commands, Interaction
 from discord.ext import commands, tasks
 
+from utils.database import db_exec, get_last_active_time
 from utils.functions import get_last_message_time, get_whitelist
 from utils.globals import working_dir
 
@@ -60,6 +61,55 @@ class Activity(commands.Cog):
             response_str += f"\n\n(Not including {str(len(inactive_whitelisted_members))} whitelisted members who are inactive)"
 
         await interaction.response.send_message(response_str, ephemeral=True)
+
+    @app_commands.command(name="last_message", description="Check when you were last active.")
+    @app_commands.describe(user="User to check. Defaults to yourself. Only admins can check users other than themselves.")
+    async def last_message(self, interaction: Interaction, user: discord.Member = None):
+        if type(interaction.user) != discord.Member:
+            logger.error(f"User {interaction.user.name} is not a member")
+            await interaction.response.send_message("For some reason, you are not a member.", ephemeral=True)
+            return
+
+        self_check = user is None or user == interaction.user
+
+        if (not interaction.user.guild_permissions.administrator
+                and not self_check):
+            await interaction.response.send_message(
+                "Only administrators can check inactivity of users other than themselves.\nPlease try again, but without specifying a user other than yourself.",
+                ephemeral=True
+            )
+            return
+
+        if user is None:
+            user = interaction.user
+
+        if user.bot:
+            await interaction.response.send_message("Don't worry about the bots, they're spared from my wrath. :upside_down:", ephemeral=True)
+            return
+
+        last_active_time = await db_exec(
+            get_last_active_time,
+            interaction.guild.id,
+            user.id
+        )
+
+        if last_active_time is None:
+            message = \
+                "You have no message history that I can see. Send a message if you don't wanna be kicked!" \
+                if self_check else \
+                f"{user.name} does not have any message history that I can see."
+
+            await interaction.response.send_message(message, ephemeral=True)
+            return
+
+        unix_timestamp = datetime.fromisoformat(last_active_time).timestamp()
+
+        message = \
+            f"Your last message was sent <t:{int(unix_timestamp)}:R>. Keep messaging if you don't want me kicking you. :wink:" \
+            if self_check else \
+            f"{user.name} last sent a message <t:{int(unix_timestamp)}:R>."
+
+        await interaction.response.send_message(message, ephemeral=True)
 
     @tasks.loop(seconds=120)
     async def change_song(self):
