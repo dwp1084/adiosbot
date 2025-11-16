@@ -45,6 +45,7 @@ class Database:
             "activity.db",
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
         )
+        self.conn.row_factory = sqlite3.Row
         while self.running:
             func, args, kwargs, result_queue = self.tasks.get()
             try:
@@ -120,7 +121,17 @@ def get_last_active_time(cursor: sqlite3.Cursor, guild_id, user_id):
     """
 
     cursor.execute(get_last_active_time_sql, (guild_id, user_id))
-    return cursor.fetchone()[0], False
+    results = cursor.fetchone()
+    results = results[0] if results is not None else None
+    return results, False
+
+def get_last_active_times(cursor: sqlite3.Cursor, guild_id):
+    get_last_active_times_sql = """
+    SELECT user_id, timestamp FROM last_message WHERE guild_id = ?;
+    """
+
+    cursor.execute(get_last_active_times_sql, (guild_id,))
+    return cursor.fetchall(), False
 
 def get_last_stored_timestamp(cursor: sqlite3.Cursor, guild_id):
     get_last_stored_timestamp_sql = """
@@ -133,3 +144,11 @@ def get_last_stored_timestamp(cursor: sqlite3.Cursor, guild_id):
     results = cursor.fetchone()
     results = results[0] if results is not None else None
     return results, False
+
+def remove_user(cursor: sqlite3.Cursor, guild_id, user_id):
+    remove_user_sql = """
+    DELETE FROM last_message WHERE guild_id = ? AND user_id = ?;
+    """
+
+    cursor.execute(remove_user_sql, (guild_id, user_id))
+    return None, True

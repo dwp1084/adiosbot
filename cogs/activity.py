@@ -26,7 +26,7 @@ class Activity(commands.Cog):
         logger.debug(f"Command received /inactive {n}")
         guild = interaction.guild
 
-        user_last_message = get_last_message_time(guild)
+        user_last_message = await get_last_message_time(guild)
         inactive_members = []
         inactive_whitelisted_members = []
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=n)

@@ -92,7 +92,7 @@ async def load_cogs():
 
 async def main():
     async with bot:
-        # await load_cogs()
+        await load_cogs()
         await bot.start(api_token)
 
 

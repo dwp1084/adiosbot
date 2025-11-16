@@ -5,7 +5,8 @@ import discord
 from discord import app_commands, Interaction
 from discord.ext import commands
 
-from utils.functions import get_last_message_time, get_whitelist, remove_member_messages
+from utils.database import db_exec, remove_user
+from utils.functions import get_last_message_time, get_whitelist
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class Moderation(commands.Cog):
         await interaction.response.send_message(f"Kicking members who haven't sent a message in the last {n} days...")
         guild = interaction.guild
 
-        user_last_message = get_last_message_time(guild)
+        user_last_message = await get_last_message_time(guild)
         inactive_members = []
         inactive_whitelisted_members = []
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=n)
@@ -37,12 +38,16 @@ class Moderation(commands.Cog):
                 if last_message_time is None or last_message_time < cutoff_date:
                     if member.id not in whitelist:
                         inactive_members.append(member.name)
-                        remove_member_messages(member, guild)
                         try:
                             await member.kick(reason=f"Inactive in {guild.name} for {n} days")
                             logger.info(f"Kicked {member.name} in {guild.name} for inactivity.")
-                        except:
-                            logger.error(f'Error kicking {member.name}')
+                            await db_exec(
+                                remove_user,
+                                guild.id,
+                                member.id
+                            )
+                        except Exception as e:
+                            logger.error(f'Error kicking {member.name}: {str(e)}')
                     else:
                         inactive_whitelisted_members.append(member.name)
 
