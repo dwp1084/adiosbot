@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from time import perf_counter
 
 import discord
 from discord.ext import commands
@@ -72,8 +73,14 @@ async def on_guild_remove(guild):
 
 @bot.event
 async def on_ready():
-    logger.info(f'Logged in as {bot.user.name}')
+    logger.info(f'Logged in as {bot.user.name} - Now syncing command tree')
+
+    start = perf_counter()
     await bot.tree.sync()
+    end = perf_counter()
+
+    logger.info(f"Command tree sync finished. Time taken: {int((end-start)//60):02d}:{(end-start)%60:06.3f}")
+
     logger.info("Starting message sync")
     async with sync_manager.lock:
         sync_manager.add_guilds(bot.guilds)

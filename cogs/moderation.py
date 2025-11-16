@@ -21,7 +21,7 @@ class Moderation(commands.Cog):
     @app_commands.checks.has_permissions(administrator=True)
     async def kick_inactive(self, interaction: Interaction, n: int = 30):
         if not sync_manager.is_ready(interaction.guild.id):
-            await interaction.response.send_message("Message history is still syncing - please try again later.")
+            await interaction.response.send_message("Message history is still syncing - please try again later.", ephemeral=True)
             return
 
         logger.debug(f"Command received - /kick_inactive {n}")

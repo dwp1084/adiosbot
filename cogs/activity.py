@@ -27,7 +27,7 @@ class Activity(commands.Cog):
     @app_commands.describe(n="Number of days of inactivity")
     async def check_inactive(self, interaction: Interaction, n: int = 30):
         if not sync_manager.is_ready(interaction.guild.id):
-            await interaction.response.send_message("Message history is still syncing - please try again later.")
+            await interaction.response.send_message("Message history is still syncing - please try again later.", ephemeral=True)
             return
 
         logger.debug(f"Command received /inactive {n}")
@@ -72,7 +72,7 @@ class Activity(commands.Cog):
     @app_commands.describe(user="User to check. Defaults to yourself. Only admins can check users other than themselves.")
     async def last_message(self, interaction: Interaction, user: discord.Member = None):
         if not sync_manager.is_ready(interaction.guild.id):
-            await interaction.response.send_message("Message history is still syncing - please try again later.")
+            await interaction.response.send_message("Message history is still syncing - please try again later.", ephemeral=True)
             return
 
         if type(interaction.user) != discord.Member:
