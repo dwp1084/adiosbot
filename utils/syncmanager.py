@@ -1,4 +1,8 @@
 import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class SyncManager:
@@ -17,6 +21,7 @@ class SyncManager:
         return self._ready.get(guild_id, False)
 
     def set_ready(self, guild_id):
+        logger.debug(f"{guild_id} is ready for commands.")
         self._ready[guild_id] = True
 
     def is_syncing(self):

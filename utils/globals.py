@@ -13,6 +13,7 @@ def setup() -> str:
     global working_dir, MESSAGE_LOG_DIR, WHITELIST_DIR
 
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
 
     load_dotenv()
 

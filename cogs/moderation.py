@@ -7,8 +7,10 @@ from discord.ext import commands
 
 from utils.database import db_exec, remove_user
 from utils.functions import get_last_message_time, get_whitelist
+from utils.syncmanager import sync_manager
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class Moderation(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -18,6 +20,10 @@ class Moderation(commands.Cog):
     @app_commands.describe(n="Threshold for inactivity in number of days. Default is 30 days.")
     @app_commands.checks.has_permissions(administrator=True)
     async def kick_inactive(self, interaction: Interaction, n: int = 30):
+        if not sync_manager.is_ready(interaction.guild.id):
+            await interaction.response.send_message("Message history is still syncing - please try again later.")
+            return
+
         logger.debug(f"Command received - /kick_inactive {n}")
         await interaction.response.send_message(f"Kicking members who haven't sent a message in the last {n} days...")
         guild = interaction.guild

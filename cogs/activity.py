@@ -10,8 +10,10 @@ from discord.ext import commands, tasks
 from utils.database import db_exec, get_last_active_time
 from utils.functions import get_last_message_time, get_whitelist
 from utils.globals import working_dir
+from utils.syncmanager import sync_manager
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class Activity(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -24,6 +26,10 @@ class Activity(commands.Cog):
     @app_commands.command(name="inactive", description="Checks which users have been inactive for n days.")
     @app_commands.describe(n="Number of days of inactivity")
     async def check_inactive(self, interaction: Interaction, n: int = 30):
+        if not sync_manager.is_ready(interaction.guild.id):
+            await interaction.response.send_message("Message history is still syncing - please try again later.")
+            return
+
         logger.debug(f"Command received /inactive {n}")
         guild = interaction.guild
 
@@ -65,6 +71,10 @@ class Activity(commands.Cog):
     @app_commands.command(name="last_message", description="Check when you were last active.")
     @app_commands.describe(user="User to check. Defaults to yourself. Only admins can check users other than themselves.")
     async def last_message(self, interaction: Interaction, user: discord.Member = None):
+        if not sync_manager.is_ready(interaction.guild.id):
+            await interaction.response.send_message("Message history is still syncing - please try again later.")
+            return
+
         if type(interaction.user) != discord.Member:
             logger.error(f"User {interaction.user.name} is not a member")
             await interaction.response.send_message("For some reason, you are not a member.", ephemeral=True)

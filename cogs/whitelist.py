@@ -10,6 +10,7 @@ from utils.globals import WHITELIST_DIR
 wl_dir = WHITELIST_DIR
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 async def get_whitelist_str(whitelist, guild):
     whitelist_str = ""

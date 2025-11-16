@@ -1,16 +1,11 @@
 import asyncio
 import logging
-import os.path
 import queue
 import sqlite3
 import threading
 
-# from utils.globals import MESSAGE_LOG_DIR
-#
-# log_dir = MESSAGE_LOG_DIR
-
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 class Database:

@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from datetime import datetime, timezone, timedelta
+from time import perf_counter
 
 import discord
 
@@ -11,7 +12,7 @@ from utils.globals import WHITELIST_DIR
 from utils.syncmanager import sync_manager
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 wl_dir = WHITELIST_DIR
 
@@ -73,11 +74,13 @@ async def fetch_messages(guild):
     timestamp = datetime.fromisoformat(timestamp_str) \
         if timestamp_str is not None else None
     logger.debug(f"Last message timestamp in {guild.name}: {timestamp}")
+    start = perf_counter()
     for channel in guild.text_channels:
         if channel.permissions_for(guild.me).read_message_history:
             await fetch_new_messages(channel, timestamp)
+    end = perf_counter()
 
-    logger.info(f"Sync for {guild.name} complete!")
+    logger.info(f"Sync for {guild.name} complete! Time taken {int((end-start)//60):02d}:{(end-start)%60:06.3f}")
     sync_manager.set_ready(guild.id)
 
 
