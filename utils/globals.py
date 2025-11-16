@@ -40,8 +40,8 @@ def setup() -> str:
     if not os.path.exists(WHITELIST_DIR):
         os.makedirs(WHITELIST_DIR)
 
-    logger.info(MESSAGE_LOG_DIR)
-    logger.info(WHITELIST_DIR)
-    logger.info(working_dir)
+    logger.debug(MESSAGE_LOG_DIR)
+    logger.debug(WHITELIST_DIR)
+    logger.debug(working_dir)
 
     return api_token

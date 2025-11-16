@@ -8,3 +8,5 @@ whitelist.json
 .idea/
 .env
 *.log
+*.db
+*.db-journal
