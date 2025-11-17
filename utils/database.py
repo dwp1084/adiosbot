@@ -27,6 +27,12 @@ class Database:
                 timestamp   DATETIME NOT NULL,
                 PRIMARY KEY(guild_id, user_id)
             );
+            
+            CREATE TABLE IF NOT EXISTS sync_progress (
+                guild_id    TEXT PRIMARY KEY,
+                timestamp   DATETIME NOT NULL,
+                synced      BOOLEAN NOT NULL
+            );
         """)
 
         self.conn.commit()
@@ -109,6 +115,33 @@ def add_timestamp(cursor:sqlite3.Cursor, guild_id, user_id, uname, timestamp):
     cursor.execute(add_timestamp_sql, (guild_id, user_id, uname, timestamp))
     return None, True
 
+def add_sync_progress(cursor: sqlite3.Cursor, guild_id, timestamp):
+    add_sync_progress_sql = """
+    INSERT INTO sync_progress(guild_id, timestamp, synced)
+    VALUES (?, ?, FALSE)
+    ON CONFLICT (guild_id)
+    DO UPDATE SET
+        timestamp = excluded.timestamp,
+        synced = excluded.synced
+    WHERE excluded.timestamp > sync_progress.timestamp;
+    """
+
+    cursor.execute(add_sync_progress_sql, (guild_id, timestamp))
+    return None, True
+
+def finish_sync(cursor: sqlite3.Cursor, guild_id):
+    finish_sync_sql = """
+    INSERT INTO sync_progress(guild_id, timestamp, synced)
+    VALUES (?, datetime('now'), TRUE)
+    ON CONFLICT (guild_id)
+    DO UPDATE SET
+        synced = excluded.synced
+    WHERE excluded.timestamp > sync_progress.timestamp;
+    """
+
+    cursor.execute(finish_sync_sql, (guild_id,))
+    return None, True
+
 def get_last_active_time(cursor: sqlite3.Cursor, guild_id, user_id):
     get_last_active_time_sql = """
     SELECT timestamp FROM last_message
@@ -139,6 +172,45 @@ def get_last_stored_timestamp(cursor: sqlite3.Cursor, guild_id):
     results = cursor.fetchone()
     results = results[0] if results is not None else None
     return results, False
+
+def get_limit(cursor: sqlite3.Cursor, guild_id):
+    """
+    Gets the intended limit from the database based both on sync data and latest timestamp.
+
+    If the bot were to stop during a sync, the sync data stores the last synced timestamp, which will be used as a limit
+    for the next sync. Otherwise, if the bot finished syncing, it uses the latest timestamp from any message it has
+    stored.
+
+    If no data exists yet for the guild, this would return None, which allows the program to set its own limit.
+
+    :param cursor: SQLite connection cursor
+    :param guild_id: ID of the guild
+    :return: The sync message timestamp limit, or None if no data is found for the guild.
+    """
+    get_sync_data_sql = """
+    SELECT timestamp, synced FROM sync_progress WHERE guild_id = ?;
+    """
+
+    get_last_stored_timestamp_sql = """
+    SELECT timestamp FROM last_message
+    WHERE guild_id = ?
+    ORDER BY timestamp DESC;
+    """
+
+    cursor.execute(get_sync_data_sql, (guild_id,))
+    results = cursor.fetchone()
+    if results is not None:
+        last_sync_success = results["synced"]
+        if not last_sync_success:
+            logger.debug("Last sync failed, using sync time timestamp.")
+            return results["timestamp"], False
+
+    logger.debug("No results found or last sync success - using latest message timestamp.")
+    cursor.execute(get_last_stored_timestamp_sql, (guild_id,))
+    results = cursor.fetchone()
+    results = results[0] if results is not None else None
+    return results, False
+
 
 def remove_user(cursor: sqlite3.Cursor, guild_id, user_id):
     remove_user_sql = """

@@ -79,7 +79,7 @@ async def on_ready():
     await bot.tree.sync()
     end = perf_counter()
 
-    logger.info(f"Command tree sync finished. Time taken: {int((end-start)//60):02d}:{(end-start)%60:06.3f}")
+    logger.info(f"Command tree sync finished. Time taken: {int((end-start)//60):02d}:{(end-start)%60:05.2f}")
 
     logger.info("Starting message sync")
     async with sync_manager.lock:

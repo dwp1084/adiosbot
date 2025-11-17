@@ -75,7 +75,7 @@ class Activity(commands.Cog):
             await interaction.response.send_message("Message history is still syncing - please try again later.", ephemeral=True)
             return
 
-        if type(interaction.user) != discord.Member:
+        if type(interaction.user) is not discord.Member:
             logger.error(f"User {interaction.user.name} is not a member")
             await interaction.response.send_message("For some reason, you are not a member.", ephemeral=True)
             return

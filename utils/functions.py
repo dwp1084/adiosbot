@@ -7,7 +7,8 @@ from time import perf_counter
 
 import discord
 
-from utils.database import db_exec, get_last_stored_timestamp, add_timestamp, get_last_active_times, remove_user
+from utils.database import db_exec, get_last_stored_timestamp, add_timestamp, get_last_active_times, remove_user, \
+    get_limit, add_sync_progress, finish_sync
 from utils.globals import WHITELIST_DIR
 from utils.syncmanager import sync_manager
 
@@ -64,11 +65,17 @@ async def fetch_new_messages(channel, earliest):
             msg.created_at
         )
 
+        await db_exec(
+            add_sync_progress,
+            msg.guild.id,
+            msg.created_at
+        )
+
 
 # Fetch and save messages from all channels
 async def fetch_messages(guild):
     timestamp_str = await db_exec(
-        get_last_stored_timestamp,
+        get_limit,
         guild.id
     )
     timestamp = datetime.fromisoformat(timestamp_str) \
@@ -78,9 +85,15 @@ async def fetch_messages(guild):
     for channel in guild.text_channels:
         if channel.permissions_for(guild.me).read_message_history:
             await fetch_new_messages(channel, timestamp)
+
+    await db_exec(
+        finish_sync,
+        guild.id
+    )
+
     end = perf_counter()
 
-    logger.info(f"Sync for {guild.name} complete! Time taken {int((end-start)//60):02d}:{(end-start)%60:06.3f}")
+    logger.info(f"Sync for {guild.name} complete! Time taken {int((end-start)//60):02d}:{(end-start)%60:05.2f}")
     sync_manager.set_ready(guild.id)
 
 
