@@ -30,6 +30,14 @@ class Activity(commands.Cog):
             await interaction.response.send_message("Message history is still syncing - please try again later.", ephemeral=True)
             return
 
+        if n < 7:
+            await interaction.response.send_message("How cruel! I'm not kicking for less than 7 days of inactivity. :rage:", ephemeral=True)
+            return
+
+        if n > 60:
+            await interaction.response.send_message("That's an awful lot of message history I need to sort through... Try a period less than or equal to 60 days perhaps. :thinking:", ephemeral=True)
+            return
+
         logger.debug(f"Command received /inactive {n}")
         guild = interaction.guild
 
@@ -41,7 +49,7 @@ class Activity(commands.Cog):
         whitelist = get_whitelist(guild)
 
         for member in guild.members:
-            if not member.bot:
+            if not (member.bot or member == guild.owner):
                 last_message_time = user_last_message.get(member.id)
 
                 logger.debug(f"{member.name} lm {last_message_time} co {cutoff_date}")
