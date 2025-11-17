@@ -71,8 +71,18 @@ class Moderation(commands.Cog):
         response_str = ""
 
         if inactive_members:
-            response_str += f"**Kicked {str(len(inactive_members))} members which were inactive in the last {n} days**\n" + "\n".join(
-                    inactive_members)
+            inactive_count = len(inactive_members)
+            response_str += f"**Kicked {inactive_count} members which were inactive in the last {n} days**\n\n"
+            for idx, member in enumerate(inactive_members):
+                if idx >= 32:
+                    response_str += f"(+{inactive_count-32} more)"
+                    break
+
+                if idx == inactive_count - 1:
+                    response_str += member
+                    continue
+
+                response_str += f"{member}\n"
         else:
             response_str += f"No inactive members found in the last {n} days."
 

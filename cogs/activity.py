@@ -31,7 +31,7 @@ class Activity(commands.Cog):
             return
 
         if n < 7:
-            await interaction.response.send_message("How cruel! I'm not kicking for less than 7 days of inactivity. :rage:", ephemeral=True)
+            await interaction.response.send_message("How cruel! I wouldn't kick for less than 7 days of inactivity. :rage:", ephemeral=True)
             return
 
         if n > 60:
@@ -66,8 +66,18 @@ class Activity(commands.Cog):
         response_str = ""
 
         if inactive_members:
-            response_str += f"**{str(len(inactive_members))} inactive members in the last {n} days:**\n" + "\n".join(
-                inactive_members)
+            inactive_count = len(inactive_members)
+            response_str += f"**{inactive_count} members which were inactive in the last {n} days**\n\n"
+            for idx, member in enumerate(inactive_members):
+                if idx >= 32:
+                    response_str += f"(+{inactive_count - 32} more)"
+                    break
+
+                if idx == inactive_count - 1:
+                    response_str += member
+                    continue
+
+                response_str += f"{member}\n"
         else:
             response_str += f"No inactive members found in the last {n} days."
 
