@@ -99,10 +99,15 @@ async def db_exec(func, *args):
     """
     Async wrapper for database connection. Submits a database function to run in
     the database thread, then returns the result
-    :param func:
-    :param args:
-    :param kwargs:
-    :return:
+    :param func: The database function to run. The first parameter of the function
+        should be a sqlite3 cursor, and it should have 2 return values - the first
+        one can be anything (the normal return value of the function), the second
+        is a boolean indicating if any data was written to the database (via INSERT,
+        UPDATE, DELETE, etc.)
+    :param args: All the arguments to pass into this function except for the sqlite3
+        cursor.
+    :return: The first return value of the function (whatever is returned from the
+        database.)
     """
     loop = asyncio.get_running_loop()
     logger.debug("Submitting function...")

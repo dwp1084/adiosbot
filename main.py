@@ -92,7 +92,7 @@ async def on_ready():
         sync_manager.add_guilds(bot.guilds)
         for guild in bot.guilds:
             await fetch_messages(guild)
-            await asyncio.sleep(0.25)
+            await asyncio.sleep(0.05)
         sync_manager.finish_syncing()
     logger.info("Ready for your commands!")
 

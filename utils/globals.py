@@ -5,12 +5,11 @@ from dotenv import load_dotenv
 
 # Make these names available elsewhere
 working_dir: str | None = None
-MESSAGE_LOG_DIR: str | None = None
 WHITELIST_DIR: str | None = None
 
 
 def setup() -> str:
-    global working_dir, MESSAGE_LOG_DIR, WHITELIST_DIR
+    global working_dir, WHITELIST_DIR
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -34,14 +33,10 @@ def setup() -> str:
     if not os.path.exists(working_dir):
         os.makedirs(working_dir)
 
-    MESSAGE_LOG_DIR = os.path.join(working_dir, "message_logs")
-    if not os.path.exists(MESSAGE_LOG_DIR):
-        os.makedirs(MESSAGE_LOG_DIR)
     WHITELIST_DIR = os.path.join(working_dir, "whitelists")
     if not os.path.exists(WHITELIST_DIR):
         os.makedirs(WHITELIST_DIR)
 
-    logger.debug(MESSAGE_LOG_DIR)
     logger.debug(WHITELIST_DIR)
     logger.debug(working_dir)
 
