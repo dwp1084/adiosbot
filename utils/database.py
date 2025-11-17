@@ -4,6 +4,8 @@ import queue
 import sqlite3
 import threading
 
+from queue import Empty
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -11,15 +13,12 @@ logger.setLevel(logging.INFO)
 class Database:
     def __init__(self):
         self.tasks = queue.Queue()
-        self.conn = sqlite3.connect(
-            "activity.db",
-            detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
-        )
-        self.conn.row_factory = sqlite3.Row
+        conn = self.open_connection()
         self.running = True
+        self.stopped = False
 
         # Run setup query, then close, so it can be opened in worker thread.
-        self.conn.executescript("""
+        conn.executescript("""
             CREATE TABLE IF NOT EXISTS last_message (
                 guild_id    TEXT NOT NULL,
                 user_id     TEXT NOT NULL,
@@ -35,33 +34,49 @@ class Database:
             );
         """)
 
-        self.conn.commit()
-        self.conn.close()
+        conn.commit()
+        conn.close()
 
-        self.thread = threading.Thread(target=self.run, daemon=True)
+        self.thread = threading.Thread(target=self.run)
         self.thread.start()
 
     def run(self):
-        self.conn = sqlite3.connect(
-            "activity.db",
-            detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
-        )
-        self.conn.row_factory = sqlite3.Row
+        conn = self.open_connection()
         while self.running:
-            func, args, kwargs, result_queue = self.tasks.get()
+
+            # This try except and timeout is to ensure thread can cleanly
+            # stop when a KeyboardInterrupt is received.
             try:
-                cursor = self.conn.cursor()
+                func, args, result_queue = self.tasks.get(timeout=10)
+            except Empty:
+                continue
+
+            try:
+                cursor = conn.cursor()
                 logger.debug(f"Running db function {func.__name__} with args {args}")
-                value, written = func(cursor, *args, **kwargs)
+                value, written = func(cursor, *args)
                 if written:
-                    self.conn.commit()
+                    conn.commit()
                 result_queue.put((True, value))
             except Exception as e:
                 result_queue.put((False, e))
 
-    def submit(self, func, *args, **kwargs):
+        conn.close()
+        self.stopped = True
+
+    @staticmethod
+    def open_connection():
+        conn = sqlite3.connect(
+            "activity.db",
+            detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+        )
+        conn.row_factory = sqlite3.Row
+
+        return conn
+
+    def submit(self, func, *args):
         result_queue = queue.Queue()
-        self.tasks.put((func, args, kwargs, result_queue))
+        self.tasks.put((func, args, result_queue))
         ok, value = result_queue.get()
         if ok:
             return value
@@ -71,11 +86,16 @@ class Database:
 
     def close(self):
         self.running = False
-        self.conn.close()
 
 _database = Database()
 
-async def db_exec(func, *args, **kwargs):
+def db_close():
+    _database.close()
+
+def is_db_stopped():
+    return _database.stopped
+
+async def db_exec(func, *args):
     """
     Async wrapper for database connection. Submits a database function to run in
     the database thread, then returns the result
@@ -88,7 +108,7 @@ async def db_exec(func, *args, **kwargs):
     logger.debug("Submitting function...")
     return await loop.run_in_executor(
         None,
-        lambda: _database.submit(func, *args, **kwargs)
+        lambda: _database.submit(func, *args)
     )
 
 # Database functions - don't use these directly. Instead, pass these through

@@ -1,11 +1,12 @@
 import asyncio
 import logging
+import time
 from time import perf_counter
 
 import discord
 from discord.ext import commands
 
-from utils.database import db_exec, add_timestamp
+from utils.database import db_exec, add_timestamp, db_close, is_db_stopped
 from utils.functions import fetch_messages
 from utils.globals import setup
 from utils.syncmanager import sync_manager
@@ -104,4 +105,15 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Keyboard interrupt received - shutting down gracefully")
+        logger.info("Waiting for DB thread to close - may take a few seconds")
+        db_close()
+
+        while not is_db_stopped():
+            # Polling here is okay, just to ensure I know when the thread stops
+            time.sleep(0.5)
+
+        logger.info("Everything shut down successfully.")
