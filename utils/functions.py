@@ -7,7 +7,7 @@ from time import perf_counter
 
 import discord
 
-from utils.database import db_exec, get_last_stored_timestamp, add_timestamp, get_last_active_times, remove_user, \
+from utils.database import db_exec, add_timestamp, get_last_active_times, remove_user, \
     get_limit, add_sync_progress, finish_sync
 from utils.globals import WHITELIST_DIR
 from utils.syncmanager import sync_manager

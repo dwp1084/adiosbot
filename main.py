@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+from logging.handlers import RotatingFileHandler
 from time import perf_counter
 
 import discord
@@ -29,7 +30,11 @@ console_handler.setLevel(logging.DEBUG)
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
-file_handler = logging.FileHandler("bot.log", encoding="utf-8")
+file_handler = RotatingFileHandler(filename="bot.log",
+                                   encoding="utf-8",
+                                   maxBytes=5*1024*1024,    # 5 MB log files
+                                   backupCount=3
+                                   )
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
