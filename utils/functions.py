@@ -65,12 +65,6 @@ async def fetch_new_messages(channel, earliest):
             msg.created_at
         )
 
-        await db_exec(
-            add_sync_progress,
-            msg.guild.id,
-            msg.created_at
-        )
-
 
 # Fetch and save messages from all channels
 async def fetch_messages(guild):
@@ -80,16 +74,21 @@ async def fetch_messages(guild):
     )
     timestamp = datetime.fromisoformat(timestamp_str) \
         if timestamp_str is not None else None
-    logger.debug(f"Last message timestamp in {guild.name}: {timestamp}")
+
+    limit = datetime.now(timezone.utc) - timedelta(days=60)
+    if timestamp is not None and timestamp > limit:
+        limit = timestamp
+
+    logger.debug(f"Beginning timestamp bound in {guild.name}: {limit}")
+
+    await db_exec(add_sync_progress, guild.id, limit)
+
     start = perf_counter()
     for channel in guild.text_channels:
         if channel.permissions_for(guild.me).read_message_history:
-            await fetch_new_messages(channel, timestamp)
+            await fetch_new_messages(channel, limit)
 
-    await db_exec(
-        finish_sync,
-        guild.id
-    )
+    await db_exec(finish_sync, guild.id)
 
     end = perf_counter()
 
