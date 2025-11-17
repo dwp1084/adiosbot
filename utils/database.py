@@ -29,7 +29,7 @@ class Database:
             );
             
             CREATE TABLE IF NOT EXISTS sync_progress (
-                guild_id    TEXT PRIMARY KEY,
+                guild_id    TEXT PRIMARY KEY NOT NULL,
                 timestamp   DATETIME NOT NULL,
                 synced      BOOLEAN NOT NULL
             );
