@@ -1,10 +1,12 @@
 import asyncio
 import logging
 import time
+import traceback
 from logging.handlers import RotatingFileHandler
 from time import perf_counter
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from utils.database import db_exec, add_timestamp, db_close, is_db_stopped
@@ -20,15 +22,15 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+rlogger = logging.getLogger()
+rlogger.setLevel(logging.INFO)
 
 formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
 console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
+rlogger.addHandler(console_handler)
 
 file_handler = RotatingFileHandler(filename="bot.log",
                                    encoding="utf-8",
@@ -37,7 +39,9 @@ file_handler = RotatingFileHandler(filename="bot.log",
                                    )
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+rlogger.addHandler(file_handler)
+
+logger = logging.getLogger(__name__)
 
 api_token = setup()
 
@@ -95,6 +99,30 @@ async def on_ready():
             await asyncio.sleep(0.05)
         sync_manager.finish_syncing()
     logger.info("Ready for your commands!")
+
+
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.MissingPermissions):
+        await interaction.response.send_message(
+            f"You are missing the following permissions required to use this command: " +
+            ", ".join(error.missing_permissions),
+            ephemeral=True
+        )
+    elif isinstance(error, app_commands.BotMissingPermissions):
+        await interaction.response.send_message(
+            f"The bot is missing the following permissions required to use this command: " +
+            ", ".join(error.missing_permissions),
+            ephemeral=True
+        )
+    else:
+        resp = (f"Ignoring exception in command '{interaction.command.name}'\n" + ""
+                .join(traceback.format_exception(error)))
+        logger.error(resp)
+        await interaction.response.send_message(
+            "An unexpected error occurred from this command.",
+            ephemeral=True
+        )
 
 
 async def load_cogs():

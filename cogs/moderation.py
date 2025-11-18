@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-import discord
 from discord import app_commands, Interaction
 from discord.ext import commands
 
@@ -19,6 +18,7 @@ class Moderation(commands.Cog):
     @app_commands.command(name="kick_inactive", description="Kick inactive users")
     @app_commands.describe(n="Threshold for inactivity in number of days. Default is 30 days.")
     @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.checks.bot_has_permissions(kick_members=True)
     async def kick_inactive(self, interaction: Interaction, n: int = 30):
         if not sync_manager.is_ready(interaction.guild.id):
             await interaction.response.send_message("Message history is still syncing - please try again later.", ephemeral=True)
@@ -91,20 +91,21 @@ class Moderation(commands.Cog):
 
         await interaction.followup.send(response_str)
 
-    @app_commands.command(name="ban", description='"Bans" a user :3')
-    @app_commands.describe(user="The user to ban")
-    async def ban_user(self, interaction: Interaction, user: discord.Member):
-        logger.debug(f"Command received - /ban {user}")
-        author = interaction.user
-        if author.guild_permissions.administrator:
-            if user == author:
-                await interaction.response.send_message("**Can't timeout yourself!**")
-            else:
-                await user.timeout(timedelta(minutes=1), reason="For reasons")
-                await interaction.response.send_message(f"**User {user.name} was timed out for 1 minute**")
-        else:
-            await author.timeout(timedelta(minutes=1), reason="Why did you think that would work? You fool. You buffoon.")
-            await interaction.response.send_message(f"**Why did you think that would work? You fool. You buffoon.**")
+    # @app_commands.command(name="ban", description='"Bans" a user :3')
+    # @app_commands.describe(user="The user to ban")
+    # @app_commands.checks.bot_has_permissions(moderate_members=True)
+    # async def ban_user(self, interaction: Interaction, user: discord.Member):
+    #     logger.debug(f"Command received - /ban {user}")
+    #     author = interaction.user
+    #     if author.guild_permissions.administrator:
+    #         if user == author:
+    #             await interaction.response.send_message("**Can't timeout yourself!**")
+    #         else:
+    #             await user.timeout(timedelta(minutes=1), reason="For reasons")
+    #             await interaction.response.send_message(f"**User {user.name} was timed out for 1 minute**")
+    #     else:
+    #         await author.timeout(timedelta(minutes=1), reason="Why did you think that would work? You fool. You buffoon.")
+    #         await interaction.response.send_message(f"**Why did you think that would work? You fool. You buffoon.**")
 
 async def setup(bot):
     await bot.add_cog(Moderation(bot))
