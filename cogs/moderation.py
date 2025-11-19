@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
+import discord.errors
 from discord import app_commands, Interaction
 from discord.ext import commands
 
@@ -42,6 +43,7 @@ class Moderation(commands.Cog):
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=n)
 
         whitelist = get_whitelist(guild)
+        missing_perms = False
 
         for member in guild.members:
             if not (member.bot or member == guild.owner):
@@ -51,19 +53,32 @@ class Moderation(commands.Cog):
 
                 if last_message_time is None or last_message_time < cutoff_date:
                     if member.id not in whitelist:
-                        inactive_members.append(member.name)
                         try:
                             await member.kick(reason=f"Inactive in {guild.name} for {n} days")
+                            inactive_members.append(member.name)
                             logger.info(f"Kicked {member.name} in {guild.name} for inactivity.")
                             await db_exec(
                                 remove_user,
                                 guild.id,
                                 member.id
                             )
+                        except discord.errors.Forbidden:
+                            logger.error(f"Missing permissions to kick {member.name}.")
+                            missing_perms = True
+                            break
                         except Exception as e:
                             logger.error(f'Error kicking {member.name}: {str(e)}')
                     else:
                         inactive_whitelisted_members.append(member.name)
+
+        if missing_perms:
+            await interaction.followup.send(
+                "Kicking members aborted due to insufficient permissions.\n\n" +
+                "Hint: This is likely caused by the bot's role being too low " +
+                "in the server hierarchy.\nCheck that the bot's role is above" +
+                " all members that would get kicked.\nWhitelist members that " +
+                "you don't want the bot kicking."
+            )
 
         inactive_members.sort()
         inactive_whitelisted_members.sort()

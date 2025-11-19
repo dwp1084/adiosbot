@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import random
@@ -40,6 +41,8 @@ class Activity(commands.Cog):
 
         logger.debug(f"Command received /inactive {n}")
         guild = interaction.guild
+
+        await interaction.response.defer(ephemeral=True)
 
         user_last_message = await get_last_message_time(guild)
         inactive_members = []
@@ -84,7 +87,7 @@ class Activity(commands.Cog):
         if inactive_whitelisted_members:
             response_str += f"\n\n(Not including {str(len(inactive_whitelisted_members))} whitelisted members who are inactive)"
 
-        await interaction.response.send_message(response_str, ephemeral=True)
+        await interaction.followup.send(response_str)
 
     @app_commands.command(name="last_message", description="Check when you were last active.")
     @app_commands.describe(user="User to check. Defaults to yourself. Only admins can check users other than themselves.")
