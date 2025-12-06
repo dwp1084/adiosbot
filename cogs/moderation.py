@@ -57,11 +57,6 @@ class Moderation(commands.Cog):
                             await member.kick(reason=f"Inactive in {guild.name} for {n} days")
                             inactive_members.append(member.name)
                             logger.info(f"Kicked {member.name} in {guild.name} for inactivity.")
-                            await db_exec(
-                                remove_user,
-                                guild.id,
-                                member.id
-                            )
                         except discord.errors.Forbidden:
                             logger.error(f"Missing permissions to kick {member.name}.")
                             missing_perms = True

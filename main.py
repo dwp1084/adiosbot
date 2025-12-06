@@ -2,6 +2,7 @@ import asyncio
 import logging
 import time
 import traceback
+from datetime import datetime, tzinfo, timezone
 from logging.handlers import RotatingFileHandler
 from time import perf_counter
 
@@ -9,8 +10,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils.database import db_exec, add_timestamp, db_close, is_db_stopped
-from utils.functions import fetch_messages
+from utils.database import db_exec, add_timestamp, db_close, is_db_stopped, remove_user
+from utils.functions import fetch_messages, remove_nonexistent_members
 from utils.globals import setup
 from utils.syncmanager import sync_manager
 
@@ -42,6 +43,7 @@ file_handler.setFormatter(formatter)
 rlogger.addHandler(file_handler)
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 api_token = setup()
 
@@ -66,6 +68,38 @@ async def on_message(message):
         author_name,
         timestamp
     )
+
+@bot.event
+async def on_member_join(member):
+    if member.bot:
+        return
+
+    guild = member.guild
+
+    await db_exec(
+        add_timestamp,
+        guild.id,
+        member.id,
+        member.name,
+        datetime.now(timezone.utc)
+    )
+
+    logger.debug(f"Added {member.name} that joined {guild.name}")
+
+@bot.event
+async def on_member_remove(member):
+    if member.bot:
+        return
+
+    guild = member.guild
+
+    await db_exec(
+        remove_user,
+        guild.id,
+        member.id
+    )
+
+    logger.debug(f"Removed {member.name} that had left {guild.name}")
 
 @bot.event
 async def on_guild_join(guild):
@@ -97,6 +131,7 @@ async def on_ready():
         for guild in bot.guilds:
             await fetch_messages(guild)
             await asyncio.sleep(0.05)
+            await remove_nonexistent_members(guild)
         sync_manager.finish_syncing()
     logger.info("Ready for your commands!")
 

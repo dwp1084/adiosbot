@@ -8,7 +8,7 @@ from time import perf_counter
 import discord
 
 from utils.database import db_exec, add_timestamp, get_last_active_times, remove_user, \
-    get_limit, add_sync_progress, finish_sync
+    get_limit, add_sync_progress, finish_sync, get_saved_members
 from utils.globals import WHITELIST_DIR
 from utils.syncmanager import sync_manager
 
@@ -55,6 +55,10 @@ async def fetch_new_messages(channel, earliest):
 
     async for msg in channel.history(limit=None, oldest_first=True, after=limit):
         if msg.author.bot:
+            continue
+
+        if msg.author not in channel.guild.members:
+            logger.debug("Skipping message from user no longer in server.")
             continue
 
         await db_exec(
@@ -120,3 +124,25 @@ def set_whitelist(guild: discord.Guild, whitelist):
 
     with open(guild_wl_path, 'w', encoding='utf-8') as f:
         json.dump(whitelist, f, ensure_ascii=False, indent=4)
+
+async def remove_nonexistent_members(guild):
+    stored_members = await db_exec(
+        get_saved_members,
+        guild.id
+    )
+
+    count = 0
+    for row in stored_members:
+        user_id = row["user_id"]
+        member = guild.get_member(int(user_id))
+        if member is None:
+            await db_exec(
+                remove_user,
+                guild.id,
+                user_id
+            )
+
+            count += 1
+
+    if count > 0:
+        logger.info(f"Removed {count} members that have left from {guild.name}")

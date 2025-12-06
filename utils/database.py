@@ -244,3 +244,11 @@ def remove_user(cursor: sqlite3.Cursor, guild_id, user_id):
 
     cursor.execute(remove_user_sql, (guild_id, user_id))
     return None, True
+
+def get_saved_members(cursor: sqlite3.Cursor, guild_id):
+    get_saved_members_sql = """
+    SELECT user_id FROM last_message WHERE guild_id = ?;
+    """
+
+    cursor.execute(get_saved_members_sql, (guild_id,))
+    return cursor.fetchall(), False
